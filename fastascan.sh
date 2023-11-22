@@ -1,32 +1,25 @@
-if [[ -z $1 ]]; then 
-	Folder=$(echo "the current folder ") 
+if [[ -z $1 ]]; then Folder=$(echo "the current folder "); path=$(echo ".")
 else 
-	if [[ $1 == "." ]]; then
-		Folder=$(echo "the current folder ")
-	else
-		Folder=$(echo "the folder '$1' ")
-	fi
+	if [[ $1 == "." ]]; then Folder=$(echo "the current folder "); path=$(echo "$1")
+	else Folder=$(echo "the folder '$1' "); path=$(echo "$1"); fi
 fi
 
-if [[ -z $2 ]]; then 
-	lines=0
-else 
-	lines=$2
-fi
+if [[ -z $2 ]]; then lines=0; else lines=$2; fi
 
 double=$((2 * lines))
 
 report=$(echo "report_fastascan.txt")
 
-Fa_find=$(find . -name "*.fasta" -or -name "*.fa" | grep -v "/\.") #Added a filter to avoid hidden files that generate errors in the output
+Fa_find=$(find $path -name "*.fasta" -or -name "*.fa" | grep -v "/\.") #Added a filter to avoid hidden files that generate errors in the output
 Fa_find_count=$(echo "$Fa_find" | wc -l)
-Fa_ids=$(grep -h ">" $Fa_find | awk '{sub(/^>/, ""); sub(/ .*/, ""); print}')
+Seq_titles=$(grep -h ">" $Fa_find | awk '{sub(/^>/, ""); sub(/ .*/, ""); print}')
+Fa_ids=$(echo "$Seq_titles" | awk -F'|' '/\|/ {if ($4) print $4; else print $3}' && echo "$Seq_titles" | awk '!/\|/ {print}')
 Fa_ids_count=$(echo "$Fa_ids" | sort | uniq -c | wc -l)
-echo "$Fa_ids" > IDs.txt
+#echo "$Fa_ids"
 
 #TERMINAL MESSAGES
 echo ""
-echo "NOTE: You selected $Folder& its subfolders to be analyzed"
+echo "NOTE: You selected $Folder& its subfolders to be analyzed."
 
 if [[ $lines -ne 0 ]]; then
 	echo "NOTE: You selected a máximum of $double lines (2 x $2) of each file to be displayed in the report."
@@ -52,7 +45,7 @@ echo "" >> $report
 echo "FILE BREAKDOWN:" >> $report
 echo "(Displaying $double lines of each file)" >> $report
 echo "" >> $report
-echo "   -----------------------------------------" >> $report
+echo "##################################################" >> $report
 
 #Start of the loop to get a header for each file:
 file_counter=1
@@ -79,7 +72,7 @@ for file in $Fa_find; do
 	#echo "$No_nucleotides, $No_nucleotides_length" #To check.
 	
 	if [[ "$No_nucleotides_length" -gt 1 ]]; then
-		Seq_type=$(echo "AMINOACIDIC")
+		Seq_type=$(echo "AMINO ACID")
 		Seq_unit=$(echo "AMINO ACIDS")
 	else
 		Seq_type=$(echo "NUCLEOTIDE")
@@ -110,7 +103,7 @@ for file in $Fa_find; do
 		echo "" >> $report
 		echo "# Warning: File $file_counter contains less lines than the lines requested. Displaying its full content." >> $report
 		echo "" >> $report
-		cat "$file" >> $report
+		cat "$file" | sed 's/^/\t/' >> $report
 		echo "" >> $report
 	elif [[ $lines -eq 0 ]]; then
 		echo "" >> $report
@@ -120,21 +113,22 @@ for file in $Fa_find; do
 		echo "" >> $report
 		echo "# Warning: File $file_counter contains more lines than the lines requested. Displaying the requested lines." >> $report
 		echo "" >> $report
-		head -n $lines $file >> $report
-		echo "..." >> $report
-		tail -n $lines $file >> $report
+		head -n $lines $file | sed 's/^/\t/' >> $report
+		echo "..." | sed 's/^/\t/' >> $report
+		tail -n $lines $file | sed 's/^/\t/' >> $report
 		echo "" >> $report
 	fi
 	
-	echo "   -----------------------------------------" >> $report
+	echo "##################################################" >> $report
+
 	
-	#TERMINAL MESSAGE
+#TERMINAL MESSAGE
 	echo " --> Added FILE $file_counter to the report file"
 	((file_counter++))
 	
 done
 ((file_counter--))
-echo "" >> $report
+
 echo ""
 echo " --> $file_counter files added to the report file '$report'"
 echo ""
